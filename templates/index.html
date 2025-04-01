@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- <title>PCA based Image interpolation</title> -->
+
+    <!-- Bootstrap -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://d3js.org/d3.v4.js" charset="utf-8"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+  </head>
+  <title>CT Image generation using Reinforcement Learning</title>
+<!-- Adding React -->
+  <script type="application/javascript" src="https://unpkg.com/react@16.0.0/umd/react.production.min.js"></script>
+  <script type="application/javascript" src="https://unpkg.com/react-dom@16.0.0/umd/react-dom.production.min.js"></script>
+  <script type="application/javascript" src="https://unpkg.com/babel-standalone@6.26.0/babel.js"></script>
+  <body>
+ <div class="container-fluid" style="background-color:  #303030">
+     <div class="row">
+         <!--<span class="border">-->
+         <div class='col-6'>
+
+             <div class='row mb-3'>
+                 <div class='col' style="text-align:center; background-color:black;"><p style="color: white; font-weight:bold; vertical-align: center; font-size: 110%"> Sample Generation</p> </div>
+             </div>
+
+             <div class='row'>
+
+                 <div class='col-3'>
+<!--                      <div class='row'></div> -->
+                     <div class="row">
+                         <button type="button" class="btn btn-primary btn-block" onclick="generate()">Generate Samples</button>
+                     </div>
+
+                 </div>
+
+                 <div class='col-3'>
+                    <div class="row mb-3">
+                        <img id="source" class="rounded mx-auto d-block" alt="..." width="180" height="180" style="width:180px height=180px">   
+                    </div>
+                 </div>
+
+                 <div class='col-3'> 
+                    <div class="row mb-3">
+                        <img id="interpolated" class="rounded mx-auto d-block" alt="..." width="180" height="180" style="width:180px height=180px">
+                    </div>
+                 </div>
+
+                 <div class='col-3'> 
+                    <div class="row mb-3">
+                        <img id="dest" class="rounded mx-auto d-block" alt="..." width="180" height="180" style="width:180px height=180px">
+                    </div>
+                 </div>
+             </div>
+
+             <div class="row mb-3">
+                
+                <div class='col-3'>
+                  
+                  <div class="row mb-3">
+
+                     <div class="col">
+                       <button type="button" class="btn btn-primary btn-block" id="dec_slider" onclick="decrement_slider()"><</button>
+                     </div>
+
+                     <div class="col">
+                      <button type="button" class="btn btn-primary btn-block" id="inc_slider" onclick="increment_slider()">></button>
+                     </div>
+                  </div>
+
+                </div>
+
+                <div class="col-9">
+                  
+                  <div class="row mb-3">
+                    <input type="range" min="0" max="100" value="0" class="slider" id="pca_slider" oninput="slider_response(this.value)">
+                  </div>
+                </div>
+
+             </div>
+             <!-- ENds -->
+
+         </div>
+         <!--</span>-->
+         <div class='col-3'>
+             
+             <div class="row mb-3"> 
+                <div class='col' style="text-align:center; background-color:black;"> <p style="color: white; font-weight:bold; vertical-align: center; font-size: 110%"> Sample Completion <p> </div>
+             </div>
+
+             <div class="row mb-3">
+
+                 <div class="col-9">
+                   <img id="source" class="rounded mx-auto d-block" alt="..." width="250" height="250" style="width:200px height=200px">
+                 </div>
+
+                 <div class="col-3">
+                     
+                     <div class="row mb-1"> 
+                        <button type="button" class="btn btn-primary btn-block">Tissue</button>
+                     </div>
+
+                     <div class="row mb-3">
+                       <button type="button" class="btn btn-primary btn-block">Pathology</button>
+                     </div>
+                     
+                     <div class="row mb-6">
+                       <button type="button" class="btn btn-primary btn-block">OK/Save</button>
+                     </div>
+                 </div>
+             </div>
+         </div>
+         <div class='col-3'>
+             <div class="row mb-1">
+                <div class='col' style="text-align:center; background-color:black;"> <p style="color: white; font-weight:bold; vertical-align: center; font-size: 110%">Database Statistics</p>
+                 </div>
+             </div>
+             <div class="row mb-1">Graphs</div>
+         </div>
+     </div>
+     <!-- First Row done -->
+<div class="row mb-1 samples-heading"> 
+    <div class='col' style="text-align:center; background-color:black;"> <p style="color: white; font-weight:bold; vertical-align: center; font-size: 120%">Sample Neighborhood Enrichment</p>  
+    </div>
+</div>
+ </div>
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script src="{{url_for('static', filename='scripts/main.js')}}"></script>
+
+    <div id="root"></div>
+    <script type="text/babel">  
+    const rootElement = document.getElementById('root')
+
+    class Main extends React.Component { 
+        constructor(props){
+            super(props);
+            this.state = {
+                data: {},
+                sampleImages: [],
+                preferences: [],
+                disableAccept:[],
+                sliderValue: 0
+            }
+            this.handleClick = this.handleClick.bind(this);
+            this.submitPreferences = this.submitPreferences.bind(this);
+            this.setTestPreferences = this.setTestPreferences.bind(this);
+            this.setInitialPreferences = this.setInitialPreferences.bind(this);
+            this.getSegments = this.getSegments.bind(this);
+            this.set_slider_value = this.set_slider_value.bind(this);
+            this.setImages = this.setImages.bind(this)   
+            this.set_black_images = this.set_black_images.bind(this);
+            this.reset_slider = this.reset_slider.bind(this);  
+            this.reset_dashboard = this.reset_dashboard.bind(this); 
+            this.trackDisabled = this.trackDisabled.bind(this);
+        }
+        componentDidMount() {
+            this.reset_dashboard();
+        }
+
+        set_black_images() {
+            console.log("Setting Images");
+            var img_tags = document.getElementsByTagName('img');
+
+            for (var i=0; i< img_tags.length; i++)
+            {
+                img_tags[i].src = "/static/black_image.jpeg";
+            }
+        }
+
+        getSegments() {
+            fetch("/get_segments",{
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Sample Imges URL to Images array
+                let images = [];
+                let defaultName = "sample_"
+                for(let i=1;i<9;i++) {
+                    let obj_key = defaultName + i;
+                    images.push(data[obj_key])
+                }
+                this.setState({
+                    data: {...data},
+                    sampleImages: [...images],
+                    sliderValue: data.level
+                })
+            })
+        }
+
+        trackDisabled(id) {
+            console.log(id);
+            let temp_preferences = this.state.preferences;
+            let disabledIDs = this.state.disableAccept;
+            if((temp_preferences[id]["Torso"] === "1" || temp_preferences[id]["Torso"] === null)
+                && (temp_preferences[id]["Left Lung"] === "1" || temp_preferences[id]["Left Lung"] === null)
+                && (temp_preferences[id]["Right Lung"] === "1" || temp_preferences[id]["Right Lung"] === null)
+                && (temp_preferences[id]["Spine"] === "1"|| temp_preferences[id]["Spine"] === null )
+                && (temp_preferences[id]["Heart"] === "1"|| temp_preferences[id]["Heart"] === null)) {
+                    if(disabledIDs.indexOf(id)!== -1) {
+                        let updatedIDs = disabledIDs.filter(item => item !== id)
+                        if((temp_preferences[id]["Torso"] === "1")
+                            && (temp_preferences[id]["Left Lung"] === "1")
+                            && (temp_preferences[id]["Right Lung"] === "1")
+                            && (temp_preferences[id]["Spine"] === "1")
+                            && (temp_preferences[id]["Heart"] === "1")) {
+                                temp_preferences[id]["Accept/Reject"] = '1';    
+                            }
+                                this.setState({
+                                    disableAccept: [...updatedIDs],
+                                    preferences : temp_preferences
+                                })
+                            }
+                }
+            else {
+                temp_preferences[id]["Accept/Reject"] = '0';
+                if(disabledIDs.indexOf(id) === -1) {
+                    disabledIDs = [...disabledIDs, id]
+                }
+                this.setState({
+                    disableAccept : [...disabledIDs],
+                    preferences : temp_preferences
+                })
+            }
+        }
+
+        handleClick(e,id,organ){
+            let temp_preferences = this.state.preferences;
+            if(temp_preferences[id][organ] ===  null || temp_preferences[id][organ] === '1') {
+                temp_preferences[id][organ] = '0';
+            } else if(temp_preferences[id][organ] === '0') {
+                temp_preferences[id][organ] = '1';
+            }
+            this.setState({
+                preferences: temp_preferences
+            }, () => {
+                if(organ !== "Accept/Reject") {
+                    this.trackDisabled(id)
+                }
+            })
+        }
+
+        setTestPreferences() {
+        let temp_samples = [1,2,3,4,5,6,7,8]
+            let temp_preferences = []
+            let temp_organ_preference = {
+                "Accept/Reject": "0",
+                "Torso": "1",
+                "Left Lung": '0',
+                "Right Lung": '1',
+                "Spine": '1',
+                "Heart": '0'
+            }
+            for(let i=1; i<=temp_samples.length; i++)  {
+                let id = i.toString();
+                if(i%2 === 0) temp_preferences.push({...temp_organ_preference, "Accept/Reject":'1'})
+                else temp_preferences.push({...temp_organ_preference, "Accept/Reject":'0'})
+            }
+            this.setState({
+                preferences: [...temp_preferences],
+                disableAccept:[0,1,2,3,4,5,6,7]
+            },()=>{
+                for(let i=0;i<8;i++){
+                    this.trackDisabled(i)
+            }
+            })
+        }
+
+        setInitialPreferences() {
+            console.log("Initial Preferences");
+            let temp_samples = [1,2,3,4,5,6,7,8]
+            let temp_preferences = []
+            let temp_organ_preference = {
+                "Accept/Reject": "0",
+                "Torso": null,
+                "Left Lung": null,
+                "Right Lung": null,
+                "Spine": null,
+                "Heart": null
+            }
+            for(let i=1; i<=temp_samples.length; i++)  {
+                let id = i.toString();
+                temp_preferences.push({...temp_organ_preference})
+            }
+            this.setState({
+                preferences: [...temp_preferences],
+                disableAccept: []
+            })
+        }
+
+        submitPreferences() {
+            let final_preferences = this.state.preferences;
+            for(let i=0; i<final_preferences.length; i++) {
+                let pref = final_preferences[i];
+                for(let key in pref){
+                    if(pref[key] === null) {
+                        final_preferences[i][key] = "1"
+                    }
+                }
+            }
+            $.ajax({
+                    type:"POST",
+                    url: "/submit_prefs",
+                    dataType:'json',
+                    data: {preferences: JSON.stringify(final_preferences)},
+                }).then(()=>{
+                    this.reset_dashboard();
+                })
+        }
+
+        set_slider_value(){
+            document.getElementById("pca_slider").value = this.state.sliderValue;
+        }
+
+        reset_slider(){
+            this.setState({
+                sliderValue: 0
+            },()=> {
+                this.set_slider_value()
+            })
+        }
+
+        setImages() {
+            document.getElementById("source").src = this.state.data.img1
+            document.getElementById("dest").src = this.state.data.img2
+            document.getElementById("interpolated").src = this.state.data.img_mid
+        }
+
+        reset_dashboard(){
+            this.reset_slider();
+            this.setInitialPreferences();
+            this.setState({
+                data: {}
+            })
+            this.set_black_images();
+            this.getSegments()
+        }
+
+        render() { 
+            this.set_slider_value();
+            if(Object.keys(this.state.data).length !== 0) this.setImages()
+            let temp_samples = [1,2,3,4,5,6,7,8]
+            const render_images = this.state.sampleImages.map((img_src,index) => {
+                    // Update it to temp_samples for dev if api doesn't work, this.state.sampleImages  if API works
+                    return (
+                        <div key={index+1} className="image-buttons-main-container">
+                            {
+                                this.state.preferences.length ?
+                                <div className="sample-image-container">
+                                <img 
+                                    src={img_src} // update this to "/static/black_image.jpeg" for dev if api doesn't work, {img_src} if it does
+                                    className={ this.state.preferences[index]["Accept/Reject"] === null
+                                                        ? "sample-image"
+                                                        :  this.state.preferences[index]["Accept/Reject"] === "1" 
+                                                        ? "sample-image sample-image-border-green"
+                                                        : "sample-image sample-image-border-blue" }
+                                />
+
+                                <div>
+                                    <div 
+                                        className={ this.state.preferences[index]["Torso"] === null
+                                                        ? "organ-description"
+                                                        :  this.state.preferences[index]["Torso"] === "1" 
+                                                        ? "organ-description organ-description-green"
+                                                        : "organ-description organ-description-red" } 
+                                        onClick={(e=event,sample_id = index,organ="Torso") => this.handleClick(e,sample_id,organ)} 
+                                    >
+                                        Torso
+                                    </div>
+                                    <div 
+                                        className={ this.state.preferences[index]["Left Lung"] === null
+                                                        ? "organ-description"
+                                                        :  this.state.preferences[index]["Left Lung"] === "1" 
+                                                        ? "organ-description organ-description-green"
+                                                        : "organ-description organ-description-red" }
+                                        onClick={(e=event,sample_id = index,organ="Left Lung") => this.handleClick(e,sample_id,organ)} 
+                                    > 
+                                        Lung (L)
+                                    </div>
+                                    <div 
+                                    className={ this.state.preferences[index]["Right Lung"] === null
+                                                        ? "organ-description"
+                                                        :  this.state.preferences[index]["Right Lung"] === "1" 
+                                                        ? "organ-description organ-description-green"
+                                                        : "organ-description organ-description-red" }
+                                    onClick={(e=event,sample_id = index,organ="Right Lung")=> this.handleClick(e,sample_id,organ)}
+                                    >
+                                        Lung (R)
+                                    </div>
+                                    <div 
+                                    className={ this.state.preferences[index]["Spine"] === null
+                                                        ? "organ-description"
+                                                        :  this.state.preferences[index]["Spine"] === "1" 
+                                                        ? "organ-description organ-description-green"
+                                                        : "organ-description organ-description-red" }
+                                    onClick={(e=event,sample_id = index,organ="Spine") => this.handleClick(e,sample_id,organ)} 
+                                    >
+                                        Spine
+                                    </div>
+                                    <div 
+                                    className={ this.state.preferences[index]["Heart"] === null
+                                                        ? "organ-description"
+                                                        :  this.state.preferences[index]["Heart"] === "1" 
+                                                        ? "organ-description organ-description-green"
+                                                        : "organ-description organ-description-red" }
+                                    onClick={(e=event,sample_id = index,organ="Heart") => this.handleClick(e,sample_id,organ)} 
+                                    >
+                                        Heart
+                                    </div>
+                                    <div 
+                                    className={ this.state.preferences[index]["Accept/Reject"] === null
+                                                        ? "organ-description"
+                                                        :  this.state.preferences[index]["Accept/Reject"] === "1" 
+                                                        ? "organ-description organ-description-green"
+                                                        : this.state.disableAccept.indexOf(index) !== -1 
+                                                        ? "organ-description organ-description-red disabled-class" 
+                                                        : "organ-description organ-description-red" }
+                                    onClick={(e=event,sample_id = index,organ="Accept/Reject") => this.handleClick(e,sample_id,organ)} 
+                                    >
+                                        Accept / Reject
+                                    </div>
+                                </div>
+                            </div>
+                                : "Waiting for Images......"
+                            }
+                        </div>
+                    )
+                })
+                
+            return (
+                <div className="sample-neighborhood-container">
+                    <div className="render-samples-container">
+                        {render_images}
+                    </div>
+                    <div className="buttons-container">
+                        <button className="submit-preferences-button" onClick = {()=> this.setTestPreferences()}>Test Preferences</button>
+                        <button className="submit-preferences-button" onClick = {()=> this.setInitialPreferences()}>Reset Preferences</button>
+                        <button className="submit-preferences-button" onClick = {()=> this.submitPreferences()}>Submit Preferences</button>
+                    </div>
+                </div>
+            );
+        }    
+    }
+    
+    // Create a function to wrap up your component
+    function App(){
+        return(
+            <div>
+                <Main/>
+            </div>
+        )
+    }
+
+    ReactDOM.render(
+      <App />,
+      rootElement
+    )
+    </script>
+  </body>
+
+</html>
